@@ -199,41 +199,138 @@ class Gas(Material):
             
         elif empty[6]:
             self.x += 1
+    def diffuse(self, cells, dimx, dimy):
+        x, y = self.x, self.y
+        cell_2 = get_cell(x, y+1, cells, dimx, dimy)      #789
+        cell_4 = get_cell(x-1, y, cells, dimx, dimy)      #4 6
+        cell_6 = get_cell(x+1, y, cells, dimx, dimy)      #123
+        cell_8 = get_cell(x, y-1, cells, dimx, dimy)
+        empty = [False,False,cell_2 == 0, False, cell_4 == 0, False, cell_6 == 0, False, cell_8 == 0]
+        
+##        if empty[2] and randint(0,3) == 0:
+##            self.y += 1
+##        elif empty[4] and randint(0,2) == 0:
+##            self.x -= 1
+##        elif empty[6] and randint(0,1) == 0:
+##            self.x += 1
+##        elif empty[8]:
+##            self.y -= 1
+        c = 3
+        if empty[2]:
+            if randint(0,c) == 0:
+                self.y += 1
+                return
+            else:
+                c -= 1
+        if empty[4]:
+            if randint(0,c) == 0:
+                self.x -= 1
+                return
+            else:
+                c -= 1
+        if empty[6]:
+            if randint(0,c) == 0:
+                self.x += 1
+                return
+            else:
+                c -= 1
+        if empty[8]:
+            if randint(0,c) == 0:
+                self.y -= 1
+                return
+            else:
+                c -= 1
+
 
 class Fire(Material):
-
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.life = randint(-200, -100)
 
     def update(self, cells, dimx, dimy):
-        self.extinguish(cells, dimx, dimy)
-        self.spread(cells, dimx, dimy)
+        
+        if self.spread(cells, dimx, dimy): return
+        if self.extinguish(cells, dimx, dimy): return
 
     def extinguish(self, cells, dimx, dimy):
         self.life += 1
         if 0 < self.life:
             cells.remove(get_cell(self.x, self.y, cells, dimx, dimy))
+            smoke = Smoke(self.x,self.y)
+            cells.append(smoke)
+            return 1
+        return 0
 
+##    def spread(self, cells, dimx, dimy):
+##        for cell in get_nearby_cells(self.x, self.y, cells):
+##            if cell.name == "water":
+##                cells.remove(cell)
+##                cells.append(Steam(cell.x, cell.y))
+##            elif randint(0, 100) < cell.flammability:
+##                cells.remove(cell)
+##                if cell.state == "powder":
+##                    fire_type = PowderFire
+##                elif cell.state == "solid":
+##                    fire_type = SolidFire
+##                elif cell.state == "liquid":
+##                    fire_type = LiquidFire
+##                elif cell.state == "gas":
+##                    fire_type = GasFire
+##                fire = fire_type(cell.x, cell.y)
+##                fire.life = cell.burn_time * -1
+##                cells.append(fire)
     def spread(self, cells, dimx, dimy):
+        
         for cell in get_nearby_cells(self.x, self.y, cells):
             if cell.name == "water":
+                cells.remove(self)
                 cells.remove(cell)
                 cells.append(Steam(cell.x, cell.y))
+                cells.append(Smoke(self.x, self.y))
+                return 1
             elif randint(0, 100) < cell.flammability:
-                cells.remove(cell)
-                if cell.state == "powder":
-                    fire_type = PowderFire
-                elif cell.state == "solid":
-                    fire_type = SolidFire
-                elif cell.state == "liquid":
-                    fire_type = LiquidFire
-                elif cell.state == "gas":
-                    fire_type = GasFire
-                fire = fire_type(cell.x, cell.y)
-                fire.life = cell.burn_time * -1
-                cells.append(fire)
+                
+                self.burn(cell.x, cell.y, cells, dimx, dimy)
+        return 0
+    def burn(self, x, y, cells, dimx, dimy):
+        
+        o = 0
+        cell = get_cell(x, y, cells, dimx, dimy)
+        for dx in range(-1,2):
+            for dy in range(-1,2):
+                if get_cell(x+dx, y+dy, cells, dimx, dimy).state == "":
+                    o += 1
+                    #print(o)
+        if o == 0: return
+        for dx in range(-1,2):
+            for dy in range(-1,2):
+                if get_cell(x+dx, y+dy, cells, dimx, dimy).state == "":
+                    if randint(0,o) == 0:
+                        
+                        cells.remove(cell)
+                        if cell.state == "powder":
+                            fire_type = PowderFire
+                        elif cell.state == "solid":
+                            fire_type = SolidFire
+                        elif cell.state == "liquid":
+                            fire_type = LiquidFire
+                        elif cell.state == "gas":
+                            fire_type = GasFire
+                            
+                        fire = fire_type(cell.x, cell.y)
+                        fire.life = -cell.burn_time
+                        if cell.name != "sawgoop" or cell.life < 0:
+                            f2 = fire_type(cell.x + dx, cell.y + dy)
+                            f2.life = -cell.burn_time
+                        else:
+                            f2 = SawGoop(cell.x + dx, cell.y + dy)
+                            f2.life = cell.life - 1
+                        
+                        cells.append(fire)
+                        cells.append(f2)
+                        return
+                    else: o -= 1
 
 
 class Sand(Powder):
@@ -279,7 +376,6 @@ class Steam(Gas):
     name = "Steam"
     color = (100, 150, 255)
     flammability = 0
-
     def __init__(self, x, y):
         self.x = x
         self.y = y
@@ -296,39 +392,75 @@ class Steam(Gas):
             cells.append(Water(self.x, self.y))
 
 class PowderFire(Fire, Powder):
-    name = "fire"
+    name = "powderfire"
     color = (255, 100, 0)
     flammability = 0
 
     def update(self, cells, dimx, dimy):
-        self.extinguish(cells, dimx, dimy)
-        self.spread(cells, dimx, dimy)
+        if self.extinguish(cells, dimx, dimy): return
+        if self.spread(cells, dimx, dimy): return
         self.move(cells, dimx, dimy)
 
 class SolidFire(Fire, Solid):
-    name = "fire"
-    color = (255, 100, 0)
+    name = "solidfire"
+    color = (255, 100, 30)
     flammability = 0
 
 class LiquidFire(Fire, Liquid):
-    name = "fire"
-    color = (255, 100, 0)
+    name = "liquidfire"
+    color = (255, 90, 0)
     flammability = 0
 
     def update(self, cells, dimx, dimy):
-        self.extinguish(cells, dimx, dimy)
-        self.spread(cells, dimx, dimy)
+        if self.extinguish(cells, dimx, dimy): return
+        if self.spread(cells, dimx, dimy): return
         self.move(cells, dimx, dimy)
 
 class GasFire(Fire, Gas):
-    name = "fire"
-    color = (255, 100, 0)
+    name = "gasfire"
+    color = (230, 100, 0)
     flammability = 0
 
     def update(self, cells, dimx, dimy):
-        self.extinguish(cells, dimx, dimy)
-        self.spread(cells, dimx, dimy)
+        if self.extinguish(cells, dimx, dimy): return
+        if self.spread(cells, dimx, dimy): return
         self.move(cells, dimx, dimy)
+    
+
+class Smoke(Gas):
+    name = "smoke"
+    color = (50, 50, 50)
+    flammability = 0
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.life = randint(-200, -100)
+        
+    def update(self, cells, dimx, dimy):
+        self.extinguish(cells, dimx, dimy)
+        self.move(cells, dimx, dimy)
+        
+    def extinguish(self, cells, dimx, dimy):
+        self.life += 1
+        if 0 < self.life:
+            cells.remove(get_cell(self.x, self.y, cells, dimx, dimy))
+
+class SawGoop(Liquid):
+    name = "sawgoop"
+    color = (100, 60, 30)
+    flammability = 50
+    burn_time = 200
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.life = randint(50, 100)
+
+    def update(self, cells, dimx, dimy):
+        for c in get_nearby_cells(self.x, self.y, cells):
+            if c.state in ("solid", "powder", "1"): return
+        self.move(cells, dimx, dimy)
+
 
 
 material_dict = {
@@ -343,7 +475,9 @@ material_dict = {
 "8":PowderFire,
 "9":SolidFire,
 "10":LiquidFire,
-"11":GasFire
+"11":GasFire,
+"12":Smoke,
+"13":SawGoop
     }
 
 num_materials = len(material_dict)
@@ -365,3 +499,4 @@ def get_nearby_cells(x, y, cells):
             results.append(cell)
     return(results)
 
+##
