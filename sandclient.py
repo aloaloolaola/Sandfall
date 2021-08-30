@@ -5,7 +5,8 @@ import threading
 from materials import *
 
 s = socket.socket()         # Create a socket object
-host = socket.gethostname() # Get local machine name
+ip = input("ip: ")
+host = socket.gethostname() if ip == "" else ip
 port = 12345                # Reserve a port for your service.
 
 
