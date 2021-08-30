@@ -143,8 +143,7 @@ def main(dimx, dimy, cellsize):
             if get_cell(cell.x, cell.y, cells_grid, dimx, dimy) != cell:
                 print(cell.x, cell.y, "is wrong!")
                 print(cells_grid)
-                while True:
-                    throwexception()
+                throwexception()
 
 if __name__ == "__main__":
     main(squares_x, squares_y, square_size)

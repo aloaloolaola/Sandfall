@@ -220,7 +220,7 @@ class Fire(Material):
     def spread(self, cells, cells_grid, dimx, dimy):
         for cell in get_nearby_cells(self.x, self.y, cells_grid, dimx, dimy):
             if cell.name == "water":
-                remove_cell(cell, cells, cells_grid, dimx, dimy)
+                remove_cell(cell, cells, cells_grid)
                 set_cell(cell.x, cell.y, cells, cells_grid, Steam(cell.x, cell.y))
             elif randint(0, 100) < cell.flammability:
                 remove_cell(cell, cells, cells_grid)
@@ -287,14 +287,14 @@ class Steam(Gas):
         self.life = randint(-200, -100)
 
     def update(self, cells, cells_grid, dimx, dimy):
-        self.condensate(cells, dimx, dimy)
         self.move(cells, cells_grid, dimx, dimy)
+        self.condensate(cells, cells_grid, dimx, dimy)
 
-    def condensate(self, cells, dimx, dimy):
+    def condensate(self, cells, cells_grid, dimx, dimy):
         self.life += 1
         if 0 < self.life:
             remove_cell(get_cell(self.x, self.y, cells_grid, dimx, dimy), cells, cells_grid)
-            set_cell(cell.x, cell.y, cells, cells_grid, Water(cell.x, cell.y))
+            set_cell(self.x, self.y, cells, cells_grid, Water(self.x, self.y))
 
 class PowderFire(Fire, Powder):
     name = "fire"
