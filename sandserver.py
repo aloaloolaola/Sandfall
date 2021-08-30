@@ -22,7 +22,7 @@ def draw_materials(surface, materials, material_size, selected, offset):
 
 def respond():
     s = socket.socket()
-    host = socket.gethostname()
+    host = "0.0.0.0"
     port = 12345
     s.bind((host, port))
     s.listen(5)
